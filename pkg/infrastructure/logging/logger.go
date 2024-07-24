@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"golib/pkg/application/logging"
+	"gitea.xscloud.ru/xscloud/golib/pkg/application/logging"
 
 	"github.com/sirupsen/logrus"
 )

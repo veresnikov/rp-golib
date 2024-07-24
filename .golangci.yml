@@ -41,7 +41,7 @@ linters-settings:
   govet:
     shadow: true
   goimports:
-    local-prefixes: golib
+    local-prefixes: gitea.xscloud.ru/xscloud/golib
   gocritic:
     disabled-checks:
       - sloppyReassign

@@ -1,4 +1,4 @@
-module golib
+module gitea.xscloud.ru/xscloud/golib
 
 go 1.22.4
 

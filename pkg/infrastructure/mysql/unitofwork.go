@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	commonerr "golib/pkg/common/errors"
-	"golib/pkg/infrastructure/sharedpool"
+	commonerr "gitea.xscloud.ru/xscloud/golib/pkg/common/errors"
+	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/sharedpool"
 )
 
 type UnitOfWork interface {

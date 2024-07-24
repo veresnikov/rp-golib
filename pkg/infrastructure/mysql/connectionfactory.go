@@ -3,7 +3,7 @@ package mysql
 import (
 	"context"
 
-	"golib/pkg/infrastructure/sharedpool"
+	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/sharedpool"
 )
 
 type ConnectionFactory interface {
