@@ -9,5 +9,8 @@ func Join(errs ...error) error {
 			errSlice = append(errSlice, err)
 		}
 	}
+	if len(errSlice) == 1 {
+		return errSlice[0]
+	}
 	return errors.Join(errSlice...)
 }
