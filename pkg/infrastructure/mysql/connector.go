@@ -21,8 +21,9 @@ type Connector interface {
 }
 
 type Config struct {
-	MaxConnections     int
-	ConnectionLifetime time.Duration
+	MaxConnections        int
+	ConnectionMaxLifeTime time.Duration
+	ConnectionMaxIdleTime time.Duration
 }
 
 type connector struct {
@@ -37,7 +38,8 @@ func (c *connector) Open(dsn string, cfg Config) error {
 	}
 
 	c.db.SetMaxOpenConns(cfg.MaxConnections)
-	c.db.SetConnMaxLifetime(cfg.ConnectionLifetime)
+	c.db.SetConnMaxLifetime(cfg.ConnectionMaxLifeTime)
+	c.db.SetConnMaxIdleTime(cfg.ConnectionMaxIdleTime)
 
 	pingError := c.db.Ping()
 	if pingError != nil {
