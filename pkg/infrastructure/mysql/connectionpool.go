@@ -12,8 +12,8 @@ type ConnectionPool interface {
 	TransactionalConnection(ctx context.Context) (TransactionalConnection, error)
 }
 
-func NewConnectionFactory(client TransactionalClient) ConnectionPool {
-	return &connectionFactory{
+func NewConnectionPool(client TransactionalClient) ConnectionPool {
+	return &connectionPool{
 		pool: sharedpool.NewPool[context.Context, TransactionalConnection](
 			func(ctx context.Context) (TransactionalConnection, sharedpool.WrappedValueReleaseFunc, error) {
 				conn, err := client.Connection(ctx)
@@ -28,11 +28,11 @@ func NewConnectionFactory(client TransactionalClient) ConnectionPool {
 	}
 }
 
-type connectionFactory struct {
+type connectionPool struct {
 	pool *sharedpool.Pool[context.Context, TransactionalConnection]
 }
 
-func (f *connectionFactory) TransactionalConnection(ctx context.Context) (TransactionalConnection, error) {
+func (f *connectionPool) TransactionalConnection(ctx context.Context) (TransactionalConnection, error) {
 	sharedConnection, err := f.pool.Get(ctx)
 	if err != nil {
 		return nil, err
