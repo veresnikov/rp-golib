@@ -33,7 +33,7 @@ func (sp *somePool) Get(ctx context.Context) (io.Closer, error) {
 	}
 	return &wrappedSomeValue{
 		Closer:      sharedValue.Value(),
-		releaseFunc: sharedValue.Release,
+		releaseFunc: sharedValue.Close,
 	}, nil
 }
 
@@ -48,12 +48,12 @@ func (v *wrappedSomeValue) Close() error {
 
 func TestSharedPool(t *testing.T) {
 	t.Run("reusing some value", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		sv := &someValue{ctx: ctx}
 		sp := &somePool{
 			pool: NewPool[context.Context, io.Closer](
-				func(_ context.Context) (io.Closer, WrappedValueReleaseFunc, error) {
-					return sv, sv.Close, nil
+				func(_ context.Context) (io.Closer, error) {
+					return sv, nil
 				},
 			),
 		}
@@ -67,8 +67,9 @@ func TestSharedPool(t *testing.T) {
 		assert.Equal(t, 2, sp.pool.pool[ctx].count)
 
 		assert.NoError(t, v1.Close())
-		assert.NoError(t, v2.Close())
+		assert.Equal(t, false, sv.closed)
 
+		assert.NoError(t, v2.Close())
 		assert.Equal(t, true, sv.closed)
 	})
 }

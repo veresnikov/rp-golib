@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"gitea.xscloud.ru/xscloud/golib/pkg/common/errors"
 	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/sharedpool"
-
-	liberrors "github.com/pkg/errors"
+	"gitea.xscloud.ru/xscloud/golib/pkg/internal/errors"
 )
 
 type RepositoryProviderBuilder[RepositoryProvider any] func(client ClientContext) RepositoryProvider
@@ -21,32 +19,29 @@ func NewUnitOfWork[RepositoryProvider any](
 	builder RepositoryProviderBuilder[RepositoryProvider],
 ) UnitOfWork[RepositoryProvider] {
 	return &unitOfWork[RepositoryProvider]{
-		pool: sharedpool.NewPool[context.Context, Transaction](
-			func(ctx context.Context) (Transaction, sharedpool.WrappedValueReleaseFunc, error) {
+		pool: sharedpool.NewPool[context.Context, *wrappedTransaction](
+			func(ctx context.Context) (wt *wrappedTransaction, err error) {
 				conn, err := pool.TransactionalConnection(ctx)
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 
-				var err2 error
 				defer func() {
-					if err2 != nil {
-						err2 = errors.Join(err2, conn.Close())
+					if err != nil {
+						err = errors.Join(err, conn.Close())
 					}
 				}()
 
-				transaction, err2 := conn.BeginTransaction(ctx, nil)
-				if err2 != nil {
-					return nil, nil, err2
+				transaction, err := conn.BeginTransaction(ctx, nil)
+				if err != nil {
+					return nil, err
 				}
 
-				wt := &wrappedTransaction{
+				wt = &wrappedTransaction{
 					Transaction: transaction,
 					state:       commit,
 				}
-				return wt, func() error {
-					return errors.Join(wt.release(), conn.Close())
-				}, nil
+				return wt, nil
 			},
 		),
 		builder: builder,
@@ -54,7 +49,7 @@ func NewUnitOfWork[RepositoryProvider any](
 }
 
 type unitOfWork[RepositoryProvider any] struct {
-	pool    *sharedpool.Pool[context.Context, Transaction]
+	pool    *sharedpool.Pool[context.Context, *wrappedTransaction]
 	builder RepositoryProviderBuilder[RepositoryProvider]
 }
 
@@ -63,19 +58,27 @@ func (uow unitOfWork[RepositoryProvider]) ExecuteWithUnitOfWork(ctx context.Cont
 	if err != nil {
 		return err
 	}
+
 	defer func() {
-		err = errors.Join(err, sharedTransaction.Release())
+		err = errors.Join(err, sharedTransaction.Close())
 	}()
+
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
+
+			defer func() {
+				panic(r)
+			}()
 		}
+
 		if err != nil {
 			err = errors.Join(err, sharedTransaction.Value().Rollback())
-			return
+		} else {
+			err = errors.Join(err, sharedTransaction.Value().Commit())
 		}
-		err = errors.Join(err, sharedTransaction.Value().Commit())
 	}()
+
 	err = callback(uow.builder(sharedTransaction.Value()))
 	return err
 }
@@ -99,7 +102,7 @@ func (wt *wrappedTransaction) Rollback() error {
 	return nil
 }
 
-func (wt *wrappedTransaction) release() error {
+func (wt *wrappedTransaction) Close() error {
 	var err error
 	switch wt.state {
 	case commit:
@@ -107,5 +110,5 @@ func (wt *wrappedTransaction) release() error {
 	case rollback:
 		err = wt.Transaction.Rollback()
 	}
-	return liberrors.WithStack(err)
+	return err
 }

@@ -51,10 +51,21 @@ local gosources = [
                 from: "gobase",
                 workdir: "/app",
                 cache: gocache,
+                env: {
+                    GOPRIVATE: "gitea.xscloud.ru",
+                },
+                copy: [
+                    copyFrom(
+                        'preparessh',
+                        '/root/.ssh',
+                        '/root/.ssh'
+                    ),
+                ],
                 ssh: {},
-                command: "
+                command: '
+                    git config --global --add url."git@gitea.xscloud.ru:".insteadOf "https://gitea.xscloud.ru/" &&
                     go mod tidy
-                ",
+                ',
                 output: {
                     artifact: "/app/go.*",
                     "local": ".",
@@ -97,6 +108,16 @@ local gosources = [
                 workdir: "/app",
                 cache: gocache,
                 command: "go test ./...",
+            },
+
+            preparessh: {
+                from: images.gobuilder,
+                workdir: "/app",
+                ssh: {},
+                command: '
+                    mkdir -p -m 0700 ~/.ssh &&
+                    ssh-keyscan -H gitea.xscloud.ru >> ~/.ssh/known_hosts
+                '
             },
         },
     },

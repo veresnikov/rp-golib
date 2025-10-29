@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"slices"
 
-	"gitea.xscloud.ru/xscloud/golib/pkg/application/logging"
-	liberr "gitea.xscloud.ru/xscloud/golib/pkg/common/errors"
-
 	"github.com/pkg/errors"
+
+	"gitea.xscloud.ru/xscloud/golib/pkg/application/logging"
+	liberr "gitea.xscloud.ru/xscloud/golib/pkg/internal/errors"
 )
 
 type Migration interface {

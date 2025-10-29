@@ -3,7 +3,7 @@ package io
 import (
 	"io"
 
-	"gitea.xscloud.ru/xscloud/golib/pkg/common/errors"
+	"gitea.xscloud.ru/xscloud/golib/pkg/internal/errors"
 )
 
 type MultiCloser interface {

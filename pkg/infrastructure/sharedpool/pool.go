@@ -2,18 +2,12 @@ package sharedpool
 
 import (
 	"errors"
+	"io"
 	"sync"
 )
 
-type WrappedValueReleaseFunc func() error
-
-type WrappedValue[V any] struct {
-	value   V
-	release WrappedValueReleaseFunc
-}
-
-type SharedValue[K comparable, V any] struct {
-	wrappedValue *WrappedValue[V]
+type SharedValue[K comparable, V io.Closer] struct {
+	v V
 
 	key     K
 	count   int
@@ -21,28 +15,26 @@ type SharedValue[K comparable, V any] struct {
 }
 
 func (v *SharedValue[K, V]) Value() V {
-	return v.wrappedValue.value
+	return v.v
 }
 
-func (v *SharedValue[K, V]) Release() error {
+func (v *SharedValue[K, V]) Close() error {
 	return v.release(v.key)
 }
 
-type ValueFactory[K comparable, V any] func(key K) (V, WrappedValueReleaseFunc, error)
+type ValueFactory[K comparable, V io.Closer] func(key K) (V, error)
 
-func NewPool[K comparable, V any](factory ValueFactory[K, V]) *Pool[K, V] {
+func NewPool[K comparable, V io.Closer](factory ValueFactory[K, V]) *Pool[K, V] {
 	return &Pool[K, V]{
 		valueFactory: factory,
-
-		mu:   new(sync.Mutex),
-		pool: make(map[K]*SharedValue[K, V]),
+		pool:         make(map[K]*SharedValue[K, V]),
 	}
 }
 
-type Pool[K comparable, V any] struct {
+type Pool[K comparable, V io.Closer] struct {
 	valueFactory ValueFactory[K, V]
 
-	mu   *sync.Mutex
+	mu   sync.Mutex
 	pool map[K]*SharedValue[K, V]
 }
 
@@ -55,15 +47,12 @@ func (p *Pool[K, V]) Get(key K) (*SharedValue[K, V], error) {
 		sv.count++
 	}
 	if sv == nil {
-		v, releaseFunc, err := p.valueFactory(key)
+		v, err := p.valueFactory(key)
 		if err != nil {
 			return nil, err
 		}
 		sv = &SharedValue[K, V]{
-			wrappedValue: &WrappedValue[V]{
-				value:   v,
-				release: releaseFunc,
-			},
+			v:       v,
 			key:     key,
 			count:   1,
 			release: p.release,
@@ -82,7 +71,7 @@ func (p *Pool[K, V]) release(key K) error {
 		return errors.New("value not found in pool")
 	}
 	if sv.count == 1 {
-		err := sv.wrappedValue.release()
+		err := sv.v.Close()
 		delete(p.pool, key)
 		return err
 	}

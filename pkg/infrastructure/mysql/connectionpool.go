@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/sharedpool"
-
-	"github.com/pkg/errors"
 )
 
 type ConnectionPool interface {
@@ -14,17 +12,7 @@ type ConnectionPool interface {
 
 func NewConnectionPool(client TransactionalClient) ConnectionPool {
 	return &connectionPool{
-		pool: sharedpool.NewPool[context.Context, TransactionalConnection](
-			func(ctx context.Context) (TransactionalConnection, sharedpool.WrappedValueReleaseFunc, error) {
-				conn, err := client.Connection(ctx)
-				if err != nil {
-					return nil, nil, errors.WithStack(err)
-				}
-				return conn, func() error {
-					return errors.WithStack(conn.Close())
-				}, nil
-			},
-		),
+		pool: sharedpool.NewPool[context.Context, TransactionalConnection](client.Connection),
 	}
 }
 
@@ -37,10 +25,9 @@ func (f *connectionPool) TransactionalConnection(ctx context.Context) (Transacti
 	if err != nil {
 		return nil, err
 	}
-
 	return &wrappedTransactionalConnection{
 		TransactionalConnection: sharedConnection.Value(),
-		releaseFunc:             sharedConnection.Release,
+		releaseFunc:             sharedConnection.Close,
 	}, nil
 }
 

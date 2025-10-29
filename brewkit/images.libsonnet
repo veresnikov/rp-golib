@@ -1,4 +1,4 @@
 {
-    gobuilder: "golang:1.22.5",
-    golangcilint: "golangci/golangci-lint:v1.59.1",
+    gobuilder: "golang:1.25.3",
+    golangcilint: "golangci/golangci-lint:v2.5.0",
 }
