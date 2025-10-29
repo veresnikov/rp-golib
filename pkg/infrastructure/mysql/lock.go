@@ -36,9 +36,9 @@ type lock struct {
 
 func (l lock) Lock() error {
 	const sqlQuery = "SELECT GET_LOCK(SUBSTRING(CONCAT(?, '.', DATABASE()), 1, 64), ?)"
-	var result int
+	var result sql.NullInt32
 	err := l.client.GetContext(l.ctx, &result, sqlQuery, l.lockName, int(l.timeout.Seconds()))
-	if result == 0 && err == nil {
+	if result.Valid && result.Int32 == 0 && err == nil {
 		return ErrLockTimeout
 	}
 	return err

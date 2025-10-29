@@ -40,6 +40,7 @@ func NewUnitOfWork[RepositoryProvider any](
 				wt = &wrappedTransaction{
 					Transaction: transaction,
 					state:       commit,
+					connClose:   conn.Close,
 				}
 				return wt, nil
 			},
@@ -90,7 +91,8 @@ const (
 
 type wrappedTransaction struct {
 	Transaction
-	state int
+	state     int
+	connClose func() error
 }
 
 func (wt *wrappedTransaction) Commit() error {
@@ -110,5 +112,5 @@ func (wt *wrappedTransaction) Close() error {
 	case rollback:
 		err = wt.Transaction.Rollback()
 	}
-	return err
+	return errors.Join(err, wt.connClose())
 }
