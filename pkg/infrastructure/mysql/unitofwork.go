@@ -10,15 +10,19 @@ import (
 
 type RepositoryProviderBuilder[RepositoryProvider any] func(client ClientContext) RepositoryProvider
 
-type UnitOfWork[RepositoryProvider any] interface {
+type UnitOfWork interface {
 	ExecuteWithClientContext(ctx context.Context, callback func(client ClientContext) error) error
+}
+
+type UnitOfWorkWithRepositoryProvider[RepositoryProvider any] interface {
+	UnitOfWork
 	ExecuteWithRepositoryProvider(ctx context.Context, callback func(provider RepositoryProvider) error) error
 }
 
 func NewUnitOfWork[RepositoryProvider any](
 	pool ConnectionPool,
 	builder RepositoryProviderBuilder[RepositoryProvider],
-) UnitOfWork[RepositoryProvider] {
+) UnitOfWorkWithRepositoryProvider[RepositoryProvider] {
 	return &unitOfWork[RepositoryProvider]{
 		pool: sharedpool.NewPool[context.Context, *wrappedTransaction](
 			func(ctx context.Context) (wt *wrappedTransaction, err error) {

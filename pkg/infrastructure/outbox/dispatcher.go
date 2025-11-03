@@ -8,30 +8,30 @@ import (
 	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/mysql"
 )
 
-func NewEventDispatcher[E outbox.Event, RepositoryProvider any](
+func NewEventDispatcher[E outbox.Event](
 	appID string,
 	serializer outbox.EventSerializer[E],
-	uow mysql.LockableUnitOfWork[RepositoryProvider],
+	uow mysql.LockableUnitOfWork,
 	lockTimeout time.Duration,
 ) outbox.EventDispatcher[E] {
-	return &eventDispatcher[E, RepositoryProvider]{
+	return &eventDispatcher[E]{
 		appID:      appID,
 		serializer: serializer,
-		storage: &eventStorage[RepositoryProvider]{
+		storage: &eventStorage{
 			uow:         uow,
 			lockTimeout: lockTimeout,
 		},
 	}
 }
 
-type eventDispatcher[E outbox.Event, RepositoryProvider any] struct {
+type eventDispatcher[E outbox.Event] struct {
 	appID      string
 	serializer outbox.EventSerializer[E]
 
-	storage *eventStorage[RepositoryProvider]
+	storage *eventStorage
 }
 
-func (d *eventDispatcher[E, RepositoryProvider]) Dispatch(ctx context.Context, destination string, event E) error {
+func (d *eventDispatcher[E]) Dispatch(ctx context.Context, destination string, event E) error {
 	msg, err := d.serializer.Serialize(event)
 	if err != nil {
 		return err

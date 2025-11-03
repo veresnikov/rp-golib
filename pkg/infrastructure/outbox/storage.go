@@ -17,12 +17,12 @@ type storedEvent struct {
 	Payload       string
 }
 
-type eventStorage[RepositoryProvider any] struct {
-	uow         mysql.LockableUnitOfWork[RepositoryProvider]
+type eventStorage struct {
+	uow         mysql.LockableUnitOfWork
 	lockTimeout time.Duration
 }
 
-func (s *eventStorage[RepositoryProvider]) append(ctx context.Context, event storedEvent) (err error) {
+func (s *eventStorage) append(ctx context.Context, event storedEvent) (err error) {
 	return s.uow.ExecuteWithClientContext(ctx, lockName(event.Destination), s.lockTimeout, func(client mysql.ClientContext) error {
 		var currentID sql.NullInt64
 		err = client.GetContext(

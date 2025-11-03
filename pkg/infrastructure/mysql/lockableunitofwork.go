@@ -5,15 +5,19 @@ import (
 	"time"
 )
 
-type LockableUnitOfWork[RepositoryProvider any] interface {
+type LockableUnitOfWork interface {
 	ExecuteWithClientContext(ctx context.Context, lockName string, lockTimeout time.Duration, callback func(client ClientContext) error) error
+}
+
+type LockableUnitOfWorkWithRepositoryProvider[RepositoryProvider any] interface {
+	LockableUnitOfWork
 	ExecuteWithRepositoryProvider(ctx context.Context, lockName string, lockTimeout time.Duration, callback func(provider RepositoryProvider) error) error
 }
 
 func NewLockableUnitOfWork[RepositoryProvider any](
-	unitOfWork UnitOfWork[RepositoryProvider],
+	unitOfWork UnitOfWorkWithRepositoryProvider[RepositoryProvider],
 	locker Locker,
-) LockableUnitOfWork[RepositoryProvider] {
+) LockableUnitOfWorkWithRepositoryProvider[RepositoryProvider] {
 	return &lockableUnitOfWork[RepositoryProvider]{
 		unitOfWork: unitOfWork,
 		locker:     locker,
@@ -21,7 +25,7 @@ func NewLockableUnitOfWork[RepositoryProvider any](
 }
 
 type lockableUnitOfWork[RepositoryProvider any] struct {
-	unitOfWork UnitOfWork[RepositoryProvider]
+	unitOfWork UnitOfWorkWithRepositoryProvider[RepositoryProvider]
 	locker     Locker
 }
 
