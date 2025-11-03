@@ -6,7 +6,8 @@ import (
 )
 
 type LockableUnitOfWork[RepositoryProvider any] interface {
-	ExecuteWithLockableUnitOfWork(ctx context.Context, lockName string, lockTimeout time.Duration, callback func(provider RepositoryProvider) error) error
+	ExecuteWithClientContext(ctx context.Context, lockName string, lockTimeout time.Duration, callback func(client ClientContext) error) error
+	ExecuteWithRepositoryProvider(ctx context.Context, lockName string, lockTimeout time.Duration, callback func(provider RepositoryProvider) error) error
 }
 
 func NewLockableUnitOfWork[RepositoryProvider any](
@@ -24,8 +25,13 @@ type lockableUnitOfWork[RepositoryProvider any] struct {
 	locker     Locker
 }
 
-func (uow lockableUnitOfWork[RepositoryProvider]) ExecuteWithLockableUnitOfWork(ctx context.Context, lockName string, lockTimeout time.Duration, callback func(provider RepositoryProvider) error) error {
+func (uow lockableUnitOfWork[RepositoryProvider]) ExecuteWithClientContext(ctx context.Context, lockName string, lockTimeout time.Duration, callback func(client ClientContext) error) error {
 	return uow.locker.ExecuteWithLock(ctx, lockName, lockTimeout, func() error {
-		return uow.unitOfWork.ExecuteWithUnitOfWork(ctx, callback)
+		return uow.unitOfWork.ExecuteWithClientContext(ctx, callback)
+	})
+}
+func (uow lockableUnitOfWork[RepositoryProvider]) ExecuteWithRepositoryProvider(ctx context.Context, lockName string, lockTimeout time.Duration, callback func(provider RepositoryProvider) error) error {
+	return uow.locker.ExecuteWithLock(ctx, lockName, lockTimeout, func() error {
+		return uow.unitOfWork.ExecuteWithRepositoryProvider(ctx, callback)
 	})
 }

@@ -11,7 +11,8 @@ import (
 type RepositoryProviderBuilder[RepositoryProvider any] func(client ClientContext) RepositoryProvider
 
 type UnitOfWork[RepositoryProvider any] interface {
-	ExecuteWithUnitOfWork(ctx context.Context, callback func(provider RepositoryProvider) error) error
+	ExecuteWithClientContext(ctx context.Context, callback func(client ClientContext) error) error
+	ExecuteWithRepositoryProvider(ctx context.Context, callback func(provider RepositoryProvider) error) error
 }
 
 func NewUnitOfWork[RepositoryProvider any](
@@ -54,7 +55,7 @@ type unitOfWork[RepositoryProvider any] struct {
 	builder RepositoryProviderBuilder[RepositoryProvider]
 }
 
-func (uow unitOfWork[RepositoryProvider]) ExecuteWithUnitOfWork(ctx context.Context, callback func(provider RepositoryProvider) error) (err error) {
+func (uow unitOfWork[RepositoryProvider]) ExecuteWithClientContext(ctx context.Context, callback func(client ClientContext) error) (err error) {
 	sharedTransaction, err := uow.pool.Get(ctx)
 	if err != nil {
 		return err
@@ -80,8 +81,14 @@ func (uow unitOfWork[RepositoryProvider]) ExecuteWithUnitOfWork(ctx context.Cont
 		}
 	}()
 
-	err = callback(uow.builder(sharedTransaction.Value()))
+	err = callback(sharedTransaction.Value())
 	return err
+}
+
+func (uow unitOfWork[RepositoryProvider]) ExecuteWithRepositoryProvider(ctx context.Context, callback func(provider RepositoryProvider) error) (err error) {
+	return uow.ExecuteWithClientContext(ctx, func(client ClientContext) error {
+		return callback(uow.builder(client))
+	})
 }
 
 const (
