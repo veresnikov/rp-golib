@@ -11,7 +11,7 @@ import (
 func NewEventDispatcher[E outbox.Event](
 	appID string,
 	serializer outbox.EventSerializer[E],
-	uow mysql.LockableUnitOfWork,
+	uow mysql.UnitOfWork,
 	lockTimeout time.Duration,
 ) outbox.EventDispatcher[E] {
 	return &eventDispatcher[E]{

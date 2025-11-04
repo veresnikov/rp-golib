@@ -2,8 +2,6 @@ package outbox
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"time"
 
 	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/mysql"
@@ -18,37 +16,17 @@ type storedEvent struct {
 }
 
 type eventStorage struct {
-	uow         mysql.LockableUnitOfWork
+	uow         mysql.UnitOfWork
 	lockTimeout time.Duration
 }
 
 func (s *eventStorage) append(ctx context.Context, event storedEvent) (err error) {
-	return s.uow.ExecuteWithClientContext(ctx, lockName(event.Destination), s.lockTimeout, func(client mysql.ClientContext) error {
-		var currentID sql.NullInt64
-		err = client.GetContext(
-			ctx, &currentID,
-			"SELECT MAX(event_id) FROM outbox_event WHERE destination = ?",
-			event.Destination,
-		)
-		if err != nil {
-			return err
-		}
-		var eventID uint64
-		if currentID.Valid {
-			eventID = uint64(currentID.Int64 + 1) // nolint gosec
-		} else {
-			eventID = 1
-		}
-
+	return s.uow.ExecuteWithClientContext(ctx, func(client mysql.ClientContext) error {
 		_, err = client.ExecContext(
 			ctx,
-			"INSERT INTO outbox_event (destination, event_id, correlation_id, event_type, payload) VALUES (?, ?, ?, ?, ?)",
-			event.Destination, eventID, event.CorrelationID, event.EventType, event.Payload,
+			"INSERT INTO outbox_event (destination, correlation_id, event_type, payload) VALUES (?, ?, ?, ?)",
+			event.Destination, event.CorrelationID, event.EventType, event.Payload,
 		)
 		return err
 	})
-}
-
-func lockName(destination string) string {
-	return fmt.Sprintf("outbox_%s_lock", destination)
 }
