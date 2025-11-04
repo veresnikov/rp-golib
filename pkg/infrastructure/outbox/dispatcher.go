@@ -2,7 +2,6 @@ package outbox
 
 import (
 	"context"
-	"time"
 
 	"gitea.xscloud.ru/xscloud/golib/pkg/application/outbox"
 	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/mysql"
@@ -12,14 +11,12 @@ func NewEventDispatcher[E outbox.Event](
 	appID string,
 	serializer outbox.EventSerializer[E],
 	uow mysql.UnitOfWork,
-	lockTimeout time.Duration,
 ) outbox.EventDispatcher[E] {
 	return &eventDispatcher[E]{
 		appID:      appID,
 		serializer: serializer,
 		storage: &eventStorage{
-			uow:         uow,
-			lockTimeout: lockTimeout,
+			uow: uow,
 		},
 	}
 }

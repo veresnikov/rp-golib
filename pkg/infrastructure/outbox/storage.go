@@ -2,7 +2,6 @@ package outbox
 
 import (
 	"context"
-	"time"
 
 	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/mysql"
 )
@@ -16,8 +15,7 @@ type storedEvent struct {
 }
 
 type eventStorage struct {
-	uow         mysql.UnitOfWork
-	lockTimeout time.Duration
+	uow mysql.UnitOfWork
 }
 
 func (s *eventStorage) append(ctx context.Context, event storedEvent) (err error) {
