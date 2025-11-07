@@ -8,10 +8,10 @@ import (
 )
 
 type storedEvent struct {
-	ID            uint64
-	CorrelationID string
-	EventType     string
-	Payload       string
+	EventID       uint64 `db:"event_id"`
+	CorrelationID string `db:"correlation_id"`
+	EventType     string `db:"event_type"`
+	Payload       string `db:"payload"`
 }
 
 type eventStorage struct {
