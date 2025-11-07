@@ -30,7 +30,7 @@ func (v version1762198457) Description() string {
 }
 
 func (v version1762198457) Up(ctx context.Context) error {
-	_, err := v.client.ExecContext(ctx, `
+	_, err := v.client.ExecContext(ctx, fmt.Sprintf(`
 		CREATE TABLE outbox_%s_event
 		(
 		    event_id         BIGINT          NOT NULL AUTO_INCREMENT,
@@ -42,6 +42,6 @@ func (v version1762198457) Up(ctx context.Context) error {
 		    ENGINE = InnoDB
 		    CHARACTER SET = utf8mb4
 		    COLLATE utf8mb4_unicode_ci
-	`)
+	`), v.transport)
 	return errors.WithStack(err)
 }
