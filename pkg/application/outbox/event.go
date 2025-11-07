@@ -11,5 +11,5 @@ type EventSerializer[E Event] interface {
 }
 
 type EventDispatcher[E Event] interface {
-	Dispatch(ctx context.Context, destination string, event E) error
+	Dispatch(ctx context.Context, event E) error
 }

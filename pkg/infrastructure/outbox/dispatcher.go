@@ -9,14 +9,20 @@ import (
 
 func NewEventDispatcher[E outbox.Event](
 	appID string,
+	transport string,
 	serializer outbox.EventSerializer[E],
 	uow mysql.UnitOfWork,
 ) outbox.EventDispatcher[E] {
+	if transport == "" {
+		panic("transport cannot be empty")
+	}
+
 	return &eventDispatcher[E]{
 		appID:      appID,
 		serializer: serializer,
 		storage: &eventStorage{
-			uow: uow,
+			uow:       uow,
+			transport: transport,
 		},
 	}
 }
@@ -28,7 +34,7 @@ type eventDispatcher[E outbox.Event] struct {
 	storage *eventStorage
 }
 
-func (d *eventDispatcher[E]) Dispatch(ctx context.Context, destination string, event E) error {
+func (d *eventDispatcher[E]) Dispatch(ctx context.Context, event E) error {
 	msg, err := d.serializer.Serialize(event)
 	if err != nil {
 		return err
@@ -40,7 +46,6 @@ func (d *eventDispatcher[E]) Dispatch(ctx context.Context, destination string, e
 	}
 
 	return d.storage.append(ctx, storedEvent{
-		Destination:   destination,
 		CorrelationID: correlationID,
 		EventType:     event.Type(),
 		Payload:       msg,
