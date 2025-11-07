@@ -102,7 +102,7 @@ func (h handler) sendEvents(ctx context.Context) error {
 
 		var events []Event
 		lastHandledEvent := lastTrackedEvent
-		for i := 0; i < len(uncommitedEvents); i++ {
+		for i := 0; i < len(commitedEvents); i++ {
 			if uncommitedEvents[i].EventID != commitedEvents[i].EventID {
 				break
 			}
