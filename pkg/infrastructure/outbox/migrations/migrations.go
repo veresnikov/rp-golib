@@ -1,4 +1,4 @@
-package database
+package outboxmigrations
 
 import (
 	"context"
