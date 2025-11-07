@@ -48,6 +48,6 @@ func NewOutboxMigrator(
 	return migrator, conn.Close, nil
 }
 
-var builderFunctions = []func(client mysql.ClientContext) libmigrator.Migration{
+var builderFunctions = []func(client mysql.ClientContext, transport string) libmigrator.Migration{
 	newVersion1762198457,
 }

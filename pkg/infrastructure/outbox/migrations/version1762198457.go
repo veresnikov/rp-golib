@@ -10,9 +10,10 @@ import (
 	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/mysql"
 )
 
-func newVersion1762198457(client mysql.ClientContext) migrator.Migration {
+func newVersion1762198457(client mysql.ClientContext, transport string) migrator.Migration {
 	return &version1762198457{
-		client: client,
+		client:    client,
+		transport: transport,
 	}
 }
 
