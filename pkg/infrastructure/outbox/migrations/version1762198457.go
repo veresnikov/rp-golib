@@ -43,6 +43,6 @@ func (v version1762198457) Up(ctx context.Context) error {
 		    ENGINE = InnoDB
 		    CHARACTER SET = utf8mb4
 		    COLLATE utf8mb4_unicode_ci
-	`), v.transport)
+	`, v.transport))
 	return errors.WithStack(err)
 }
