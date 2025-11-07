@@ -38,7 +38,7 @@ func NewOutboxMigrator(
 
 	migrations := make([]libmigrator.Migration, 0, len(builderFunctions))
 	for _, builder := range builderFunctions {
-		migrations = append(migrations, builder(conn))
+		migrations = append(migrations, builder(conn, transport))
 	}
 
 	migrator, err = factory.NewMigrator(ctx, migrations...)
