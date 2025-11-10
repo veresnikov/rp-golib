@@ -15,10 +15,10 @@ func NewOutboxMigrator(
 	ctx context.Context,
 	pool mysql.ConnectionPool,
 	logger logging.Logger,
-	transport string,
+	transportName string,
 ) (migrator libmigrator.Migrator, release io.CloserFunc, err error) {
-	if transport == "" {
-		panic("transport cannot be empty")
+	if transportName == "" {
+		panic("transportName cannot be empty")
 	}
 
 	conn, err2 := pool.TransactionalConnection(ctx)
@@ -31,14 +31,14 @@ func NewOutboxMigrator(
 		}
 	}()
 
-	tablePrefix := fmt.Sprintf("outbox_%s", transport)
+	tablePrefix := fmt.Sprintf("outbox_%s", transportName)
 
 	l := logger.WithField("migrator", tablePrefix)
 	factory := libmigrator.NewMigratorFactory(tablePrefix, conn, l)
 
 	migrations := make([]libmigrator.Migration, 0, len(builderFunctions))
 	for _, builder := range builderFunctions {
-		migrations = append(migrations, builder(conn, transport))
+		migrations = append(migrations, builder(conn, transportName))
 	}
 
 	migrator, err = factory.NewMigrator(ctx, migrations...)

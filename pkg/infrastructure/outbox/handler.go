@@ -10,40 +10,50 @@ import (
 	"gitea.xscloud.ru/xscloud/golib/pkg/application/logging"
 	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/mysql"
 	liberr "gitea.xscloud.ru/xscloud/golib/pkg/internal/errors"
+	"gitea.xscloud.ru/xscloud/golib/pkg/internal/helpers"
 )
 
-type Event struct {
-	CorrelationID string
-	EventType     string
-	Payload       string
-}
-
 type Transport interface {
-	HandleEvents(ctx context.Context, events []Event) error
+	HandleEvents(ctx context.Context, correlationID, eventType, payload string) error
 }
 
 type Handler interface {
 	Start(ctx context.Context) error
 }
 
-func NewEventHandler(
-	transportName string,
-	transport Transport,
-	batchSize uint,
-	sendInterval time.Duration,
-	lockTimeout time.Duration,
-	pool mysql.ConnectionPool,
-	logger logging.Logger,
-) Handler {
+type EventHandlerConfig struct {
+	TransportName  string
+	Transport      Transport
+	ConnectionPool mysql.ConnectionPool
+	Logger         logging.Logger
+	BatchSize      *uint
+	SendInterval   *time.Duration
+	LockTimeout    *time.Duration
+}
+
+func NewEventHandler(config EventHandlerConfig) Handler {
+	if config.TransportName == "" {
+		panic("transport name cannot be empty")
+	}
+	if config.BatchSize == nil {
+		config.BatchSize = helpers.ToPtr(uint(1000))
+	}
+	if config.SendInterval == nil {
+		config.SendInterval = helpers.ToPtr(10 * time.Second)
+	}
+	if config.LockTimeout == nil {
+		config.LockTimeout = helpers.ToPtr(time.Minute)
+	}
+
 	return &handler{
-		transportName: transportName,
-		transport:     transport,
-		batchSize:     batchSize,
-		sendInterval:  sendInterval,
-		pool:          pool,
-		lockTimeout:   lockTimeout,
-		locker:        mysql.NewLocker(pool),
-		logger:        logger,
+		transportName: config.TransportName,
+		transport:     config.Transport,
+		pool:          config.ConnectionPool,
+		logger:        config.Logger,
+		batchSize:     *config.BatchSize,
+		sendInterval:  *config.SendInterval,
+		lockTimeout:   *config.LockTimeout,
+		locker:        mysql.NewLocker(config.ConnectionPool),
 	}
 }
 
@@ -51,12 +61,13 @@ type handler struct {
 	transportName string
 	transport     Transport
 	batchSize     uint
-	sendInterval  time.Duration
 
-	pool        mysql.ConnectionPool
-	lockTimeout time.Duration
-	locker      mysql.Locker
-	logger      logging.Logger
+	pool   mysql.ConnectionPool
+	locker mysql.Locker
+	logger logging.Logger
+
+	sendInterval time.Duration
+	lockTimeout  time.Duration
 }
 
 func (h handler) Start(ctx context.Context) error {
@@ -65,10 +76,11 @@ func (h handler) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-time.After(h.sendInterval):
-		default:
 		}
 
-		err := h.sendEvents(context.Background())
+		sendCtx, cancel := context.WithCancel(context.Background())
+		err := h.sendEvents(sendCtx)
+		cancel()
 		if err != nil {
 			return err
 		}
@@ -100,28 +112,28 @@ func (h handler) sendEvents(ctx context.Context) error {
 			return err
 		}
 
-		var events []Event
+		var handleErr error
 		lastHandledEvent := lastTrackedEvent
 		for i := 0; i < len(commitedEvents); i++ {
 			if uncommitedEvents[i].EventID != commitedEvents[i].EventID {
 				break
 			}
 
-			events = append(events, Event{
-				CorrelationID: commitedEvents[i].CorrelationID,
-				EventType:     commitedEvents[i].EventType,
-				Payload:       commitedEvents[i].Payload,
-			})
+			handleErr = h.transport.HandleEvents(
+				ctx,
+				commitedEvents[i].CorrelationID,
+				commitedEvents[i].EventType,
+				commitedEvents[i].Payload,
+			)
+			if handleErr != nil {
+				h.logger.Error(handleErr)
+				break
+			}
+
 			lastHandledEvent = commitedEvents[i].EventID
 		}
 
-		err2 := h.transport.HandleEvents(ctx, events)
-		if err2 != nil {
-			h.logger.Error(err2)
-			return nil
-		}
-
-		return h.trackLastHandledEvent(ctx, conn, lastHandledEvent)
+		return liberr.Join(handleErr, h.trackLastHandledEvent(ctx, conn, lastHandledEvent))
 	})
 }
 

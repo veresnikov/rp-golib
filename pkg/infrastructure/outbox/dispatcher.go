@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"context"
+	"fmt"
 
 	"gitea.xscloud.ru/xscloud/golib/pkg/application/outbox"
 	"gitea.xscloud.ru/xscloud/golib/pkg/infrastructure/mysql"
@@ -9,29 +10,27 @@ import (
 
 func NewEventDispatcher[E outbox.Event](
 	appID string,
-	transport string,
+	transportName string,
 	serializer outbox.EventSerializer[E],
 	uow mysql.UnitOfWork,
 ) outbox.EventDispatcher[E] {
-	if transport == "" {
-		panic("transport cannot be empty")
+	if transportName == "" {
+		panic("transport name cannot be empty")
 	}
 
 	return &eventDispatcher[E]{
-		appID:      appID,
-		serializer: serializer,
-		storage: &eventStorage{
-			uow:       uow,
-			transport: transport,
-		},
+		appID:         appID,
+		transportName: transportName,
+		serializer:    serializer,
+		uow:           uow,
 	}
 }
 
 type eventDispatcher[E outbox.Event] struct {
-	appID      string
-	serializer outbox.EventSerializer[E]
-
-	storage *eventStorage
+	appID         string
+	transportName string
+	serializer    outbox.EventSerializer[E]
+	uow           mysql.UnitOfWork
 }
 
 func (d *eventDispatcher[E]) Dispatch(ctx context.Context, event E) error {
@@ -45,9 +44,24 @@ func (d *eventDispatcher[E]) Dispatch(ctx context.Context, event E) error {
 		return err
 	}
 
-	return d.storage.append(ctx, storedEvent{
+	return d.append(ctx, storedEvent{
 		CorrelationID: correlationID,
 		EventType:     event.Type(),
 		Payload:       msg,
+	})
+}
+
+func (d *eventDispatcher[E]) append(ctx context.Context, event storedEvent) (err error) {
+	return d.uow.ExecuteWithClientContext(ctx, func(client mysql.ClientContext) error {
+		query := fmt.Sprintf(
+			"INSERT INTO outbox_%s_event (correlation_id, event_type, payload) VALUES (?, ?, ?)",
+			d.transportName,
+		)
+		_, err = client.ExecContext(
+			ctx,
+			query,
+			event.CorrelationID, event.EventType, event.Payload,
+		)
+		return err
 	})
 }
