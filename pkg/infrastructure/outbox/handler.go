@@ -71,15 +71,19 @@ type handler struct {
 }
 
 func (h handler) Start(ctx context.Context) error {
+	needRetry := make(chan bool, 1)
+	defer close(needRetry)
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-time.After(h.sendInterval):
+		case <-needRetry:
 		}
 
 		sendCtx, cancel := context.WithCancel(context.Background())
-		err := h.sendEvents(sendCtx)
+		err := h.sendEvents(sendCtx, needRetry)
 		cancel()
 		if err != nil {
 			return err
@@ -87,7 +91,7 @@ func (h handler) Start(ctx context.Context) error {
 	}
 }
 
-func (h handler) sendEvents(ctx context.Context) error {
+func (h handler) sendEvents(ctx context.Context, needRetry chan bool) error {
 	return h.locker.ExecuteWithLock(ctx, h.lockName(), h.lockTimeout, func() error {
 		conn, err := h.pool.TransactionalConnection(ctx)
 		if err != nil {
@@ -112,8 +116,12 @@ func (h handler) sendEvents(ctx context.Context) error {
 			return err
 		}
 
+		select {
+		case needRetry <- len(uncommitedEvents) > 0 || uint(len(commitedEvents)) == h.batchSize:
+		default:
+		}
+
 		var handleErr error
-		lastHandledEvent := lastTrackedEvent
 		for i := 0; i < len(commitedEvents); i++ {
 			if uncommitedEvents[i].EventID != commitedEvents[i].EventID {
 				break
@@ -130,10 +138,13 @@ func (h handler) sendEvents(ctx context.Context) error {
 				break
 			}
 
-			lastHandledEvent = commitedEvents[i].EventID
+			err = h.trackLastHandledEvent(ctx, conn, commitedEvents[i].EventID)
+			if err != nil {
+				return err
+			}
 		}
 
-		return liberr.Join(handleErr, h.trackLastHandledEvent(ctx, conn, lastHandledEvent))
+		return nil
 	})
 }
 
