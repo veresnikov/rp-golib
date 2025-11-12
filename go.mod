@@ -3,10 +3,12 @@ module gitea.xscloud.ru/xscloud/golib
 go 1.25.3
 
 require (
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/pkg/errors v0.9.1
+	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 )
