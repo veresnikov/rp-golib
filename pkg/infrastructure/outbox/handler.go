@@ -92,11 +92,14 @@ func (h handler) Start(ctx context.Context) error {
 }
 
 func (h handler) sendEvents(ctx context.Context, needRetry chan bool) error {
-	return h.locker.ExecuteWithLock(ctx, h.lockName(), h.lockTimeout, func() error {
+	return h.locker.ExecuteWithLock(ctx, h.lockName(), h.lockTimeout, func() (err error) {
 		conn, err := h.pool.TransactionalConnection(ctx)
 		if err != nil {
 			return err
 		}
+		defer func() {
+			err = liberr.Join(err, conn.Close())
+		}()
 
 		lastTrackedEvent, err := h.lastTrackedEvent(ctx, conn)
 		if err != nil {
