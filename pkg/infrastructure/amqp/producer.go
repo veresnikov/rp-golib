@@ -131,6 +131,9 @@ func (p *producer) Publish(ctx context.Context, delivery Delivery) error {
 	if err != nil {
 		return err
 	}
+	if deferredConfirmation == nil {
+		return nil
+	}
 	publishOk, err := deferredConfirmation.WaitContext(ctx)
 	if err != nil {
 		return err
