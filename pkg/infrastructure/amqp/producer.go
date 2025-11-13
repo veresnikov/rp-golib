@@ -91,6 +91,11 @@ func (p *producer) Connect(conn *amqp.Connection) (err error) {
 		}
 	}
 
+	err = p.channel.Confirm(false)
+	if err != nil {
+		return err
+	}
+
 	connErrorChan := channel.NotifyClose(make(chan *amqp.Error))
 	go p.processConnectErrors(connErrorChan)
 
@@ -106,11 +111,8 @@ func (p *producer) Publish(ctx context.Context, delivery Delivery) error {
 	}
 
 	var exchange string
-	switch {
-	case p.exchangeConfig != nil:
+	if p.exchangeConfig != nil {
 		exchange = p.exchangeConfig.Name
-	case p.queueConfig != nil:
-		exchange = p.queueConfig.Name
 	}
 	deferredConfirmation, err := p.channel.PublishWithDeferredConfirmWithContext(
 		ctx,
