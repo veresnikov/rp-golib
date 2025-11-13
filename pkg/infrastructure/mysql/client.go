@@ -28,6 +28,10 @@ type TransactionalConnection interface {
 	Close() error
 }
 
+func NewTransactionalClientFromSQLx(db *sqlx.DB) TransactionalClient {
+	return &transactionalClient{db}
+}
+
 type TransactionalClient interface {
 	ClientContext
 	BeginTransaction() (Transaction, error)
