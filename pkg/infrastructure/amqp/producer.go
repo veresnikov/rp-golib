@@ -91,7 +91,7 @@ func (p *producer) Connect(conn *amqp.Connection) (err error) {
 		}
 	}
 
-	err = p.channel.Confirm(false)
+	err = channel.Confirm(false)
 	if err != nil {
 		return err
 	}
