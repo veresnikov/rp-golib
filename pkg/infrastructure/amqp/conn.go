@@ -22,7 +22,7 @@ type Connection interface {
 	AddChannel(channel Channel)
 
 	Producer(exchangeConfig *ExchangeConfig, queueConfig *QueueConfig, bindConfig *BindConfig) Producer
-	Consumer(ctx context.Context, handler Handler, queueConfig *QueueConfig, bindConfig *BindConfig) Consumer
+	Consumer(ctx context.Context, handler Handler, queueConfig *QueueConfig, bindConfig *BindConfig, qosConfig *QoSConfig) Consumer
 }
 
 type Channel interface {
@@ -101,8 +101,8 @@ func (c *connection) Producer(exchangeConfig *ExchangeConfig, queueConfig *Queue
 	return producer
 }
 
-func (c *connection) Consumer(ctx context.Context, handler Handler, queueConfig *QueueConfig, bindConfig *BindConfig) Consumer {
-	consumer := NewConsumer(ctx, handler, queueConfig, bindConfig, c.logger)
+func (c *connection) Consumer(ctx context.Context, handler Handler, queueConfig *QueueConfig, bindConfig *BindConfig, qosConfig *QoSConfig) Consumer {
+	consumer := NewConsumer(ctx, handler, queueConfig, bindConfig, qosConfig, c.logger)
 	c.AddChannel(consumer)
 	return consumer
 }

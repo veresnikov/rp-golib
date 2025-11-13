@@ -20,6 +20,7 @@ func NewConsumer(
 	handler Handler,
 	queueConfig *QueueConfig,
 	bindConfig *BindConfig,
+	qoSConfig *QoSConfig,
 	logger Logger,
 ) Consumer {
 	if queueConfig == nil {
@@ -30,6 +31,7 @@ func NewConsumer(
 		handler:     handler,
 		queueConfig: queueConfig,
 		bindConfig:  bindConfig,
+		qoSConfig:   qoSConfig,
 		logger:      logger,
 	}
 }
@@ -39,6 +41,7 @@ type consumer struct {
 	handler     Handler
 	queueConfig *QueueConfig
 	bindConfig  *BindConfig
+	qoSConfig   *QoSConfig
 
 	logger  Logger
 	conn    *amqp.Connection
@@ -71,6 +74,13 @@ func (c *consumer) Connect(conn *amqp.Connection) (err error) {
 
 	if c.bindConfig != nil {
 		err = bindDeclare(*c.bindConfig, channel)
+		if err != nil {
+			return err
+		}
+	}
+
+	if c.qoSConfig != nil {
+		err = qosDeclare(*c.qoSConfig, c.channel)
 		if err != nil {
 			return err
 		}

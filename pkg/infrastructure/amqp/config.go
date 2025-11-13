@@ -32,6 +32,12 @@ type QueueConfig struct {
 	Args       amqp.Table
 }
 
+type QoSConfig struct {
+	PrefetchCount int
+	PrefetchSize  int
+	Global        bool
+}
+
 type BindConfig struct {
 	QueueName    string
 	ExchangeName string
@@ -61,10 +67,6 @@ func queueDeclare(config QueueConfig, channel *amqp.Channel) error {
 		config.NoWait,
 		config.Args,
 	)
-	if err != nil {
-		return err
-	}
-
 	return err
 }
 
@@ -76,4 +78,8 @@ func bindDeclare(config BindConfig, channel *amqp.Channel) error {
 		}
 	}
 	return nil
+}
+
+func qosDeclare(config QoSConfig, channel *amqp.Channel) error {
+	return channel.Qos(config.PrefetchCount, config.PrefetchSize, config.Global)
 }
