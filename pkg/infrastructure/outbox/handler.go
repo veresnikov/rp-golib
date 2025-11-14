@@ -74,6 +74,11 @@ func (h handler) Start(ctx context.Context) error {
 	needRetry := make(chan bool, 1)
 	defer close(needRetry)
 
+	select {
+	case needRetry <- true:
+	default:
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
