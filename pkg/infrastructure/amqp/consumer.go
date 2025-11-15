@@ -109,7 +109,7 @@ func (c *consumer) consume() error {
 				Type:          delivery.Type,
 				Body:          delivery.Body,
 			})
-			if err != nil {
+			if err == nil {
 				_ = delivery.Ack(false)
 			} else {
 				_ = delivery.Nack(false, true)
